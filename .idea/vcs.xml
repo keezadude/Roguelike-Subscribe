@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="VcsDirectoryMappings">
+    <mapping directory="$PROJECT_DIR$/lib/3DreamEngine" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/lib/andross" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/lib/astray" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/lib/breezefield" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/lib/hotparticles" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/lib/hump" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/lib/loveblobs" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/lib/rotLove" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/lib/tiny-ecs" vcs="Git" />
+  </component>
+</project>

@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git clone:*)",
+      "Bash(curl:*)",
+      "Bash(wget:*)",
+      "Bash(powershell:*)",
+      "Bash(love:*)",
+      "Bash(lua:*)",
+      "Bash(\"C:\\Program Files\\LOVE\\love.exe\" .)",
+      "Bash(\"C:\\Program Files\\LOVE\\love.exe\" . --console)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
