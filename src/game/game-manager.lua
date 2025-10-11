@@ -397,9 +397,6 @@ function GameManager:checkCollisions()
     -- Query all colliders that the vehicle chassis is currently colliding with
     local vehicleCollider = self.vehicle.chassis
     
-    -- Get enter collision data from Breezefield
-    local enterCollisionData = vehicleCollider:getEnterCollisionData()
-    
     print(string.format("🔍 DEBUG: Checking collisions via Breezefield"))
     print(string.format("🔍 DEBUG: Vehicle chassis exists: %s", tostring(vehicleCollider ~= nil)))
     
