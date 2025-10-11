@@ -23,8 +23,8 @@ Vehicle.SPECS = {
     suspensionDamping = 0.7,
     
     -- Physics
-    maxSpeed = 500,  -- pixels/second
-    enginePower = 150000,  -- Force for acceleration
+    maxSpeed = 800,  -- pixels/second (increased for more excitement)
+    enginePower = 200000,  -- Force for acceleration (increased)
     brakePower = 100000,  -- Braking force
 }
 
@@ -195,14 +195,14 @@ function Vehicle:launch(power)
     self.launchPower = power
     self.launched = true
     
-    -- Calculate launch force
-    local launchForce = power * self.SPECS.enginePower
+    -- Calculate launch force (boosted for better gameplay)
+    local launchForce = power * self.SPECS.enginePower * 1.5
     
     -- Apply horizontal impulse to chassis
     self.chassis:applyLinearImpulse(launchForce, 0)
     
     -- Apply some upward force for a more dramatic launch
-    local liftForce = power * self.SPECS.enginePower * 0.2
+    local liftForce = power * self.SPECS.enginePower * 0.3
     self.chassis:applyLinearImpulse(0, -liftForce)
     
     print(string.format("Vehicle launched at %.0f%% power (force: %.0f)", power * 100, launchForce))
@@ -292,7 +292,7 @@ function Vehicle:checkWheelsOnGround()
         -- Check if wheel has active contacts
         local contacts = wheel:getContacts()
         for _, contact in ipairs(contacts) do
-            if contact:isTouching() then
+            if contact and type(contact) == "userdata" and contact.isTouching then
                 return true
             end
         end

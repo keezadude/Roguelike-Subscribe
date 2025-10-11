@@ -21,6 +21,7 @@ local ScreenEffects = require('src.effects.screen-effects')
 local AchievementSystem = require('src.progression.achievement-system')
 local AchievementNotification = require('src.ui.achievement-notification')
 local ShopUI = require('src.ui.shop-ui')
+local StatisticsUI = require('src.ui.statistics-ui')
 
 local GameManager = {}
 GameManager.__index = GameManager
@@ -157,6 +158,9 @@ function GameManager:initializeSystems()
     
     -- Week 5: Shop UI
     self.shopUI = ShopUI:new(self.progressionManager, self.saveManager)
+    
+    -- Statistics UI
+    self.statisticsUI = StatisticsUI:new(self.saveManager, self.achievementSystem)
     print(string.format("    • UI systems: %.3fs", love.timer.getTime() - t5))
     
     print("  ✓ All subsystems initialized")
@@ -185,6 +189,8 @@ function GameManager:registerStates()
                 sm:setState(sm.STATES.SETUP)
             elseif key == "s" then
                 sm:setState(sm.STATES.SHOP)
+            elseif key == "tab" then
+                sm:setState(sm.STATES.STATISTICS)
             end
         end
     })
@@ -208,6 +214,24 @@ function GameManager:registerStates()
         end,
         mousepressed = function(x, y, button)
             self.shopUI:mousepressed(x, y, button)
+        end
+    })
+    
+    -- STATISTICS
+    sm:registerState(sm.STATES.STATISTICS, {
+        enter = function()
+            print("Entered: STATISTICS")
+        end,
+        update = function(dt)
+            -- Statistics UI updates if needed
+        end,
+        draw = function()
+            self.statisticsUI:draw()
+        end,
+        keypressed = function(key)
+            if key == "escape" or key == "tab" then
+                sm:setState(sm.STATES.MAIN_MENU)
+            end
         end
     })
     
@@ -818,18 +842,78 @@ function GameManager:drawGameWorld()
 end
 
 function GameManager:drawMainMenu()
-    love.graphics.clear(0.1, 0.1, 0.15)
+    local w, h = love.graphics.getWidth(), love.graphics.getHeight()
+    
+    -- Background gradient effect
+    love.graphics.clear(0.08, 0.08, 0.12)
+    
+    -- Animated background elements (simple particles)
+    love.graphics.setColor(0.15, 0.15, 0.25, 0.3)
+    for i = 1, 20 do
+        local x = (love.timer.getTime() * 20 + i * 50) % (w + 100) - 50
+        local y = 100 + (i * 30) % (h - 200)
+        love.graphics.circle("fill", x, y, 3)
+    end
+    
+    -- Title with shadow
+    love.graphics.setColor(0, 0, 0, 0.5)
+    love.graphics.printf("ROGUELIKE & SUBSCRIBE", 4, 104, w, "center", 0, 1, 1)
+    love.graphics.setColor(0.2, 0.6, 1)
+    love.graphics.printf("ROGUELIKE & SUBSCRIBE", 0, 100, w, "center", 0, 1, 1)
+    
+    -- Subtitle
+    love.graphics.setColor(0.7, 0.7, 0.8)
+    love.graphics.printf("Truck Dismount Meets Meta-Progression", 0, 135, w, "center")
+    
+    -- Stats box
+    local subs = self.saveManager:getData("totalSubscribers")
+    local runs = self.saveManager:getData("totalRuns") or 0
+    local highScore = self.saveManager:getData("highScore") or 0
+    
+    love.graphics.setColor(0.15, 0.15, 0.25, 0.8)
+    love.graphics.rectangle("fill", w/2 - 150, 200, 300, 120, 10, 10)
+    love.graphics.setColor(0.3, 0.3, 0.4)
+    love.graphics.rectangle("line", w/2 - 150, 200, 300, 120, 10, 10)
     
     love.graphics.setColor(1, 1, 1)
-    love.graphics.print("ROGUELIKE & SUBSCRIBE", 400, 200, 0, 2)
-    love.graphics.print("Truck Dismount Meets Meta-Progression", 400, 250)
+    love.graphics.printf("📊 STATISTICS", w/2 - 150, 210, 300, "center")
+    love.graphics.setColor(0.9, 0.9, 0.9)
+    love.graphics.printf(string.format("Subscribers: %d", subs), w/2 - 140, 240, 280, "left")
+    love.graphics.printf(string.format("Runs: %d", runs), w/2 - 140, 260, 280, "left")
+    love.graphics.printf(string.format("High Score: %d", highScore), w/2 - 140, 280, 280, "left")
     
-    love.graphics.print("SPACE - Start Run", 500, 400)
-    love.graphics.print("S - Shop/Upgrades", 500, 430)
-    love.graphics.print("ESC - Quit", 500, 460)
+    -- Menu options with visual style
+    local menuY = 380
+    local options = {
+        {key = "SPACE", text = "Start New Run", icon = "🎮"},
+        {key = "S", text = "Shop & Upgrades", icon = "🛒"},
+        {key = "TAB", text = "Statistics", icon = "📈"},
+        {key = "ESC", text = "Quit Game", icon = "🚪"}
+    }
     
-    local subs = self.saveManager:getData("totalSubscribers")
-    love.graphics.print(string.format("Total Subscribers: %d", subs), 500, 550)
+    for i, option in ipairs(options) do
+        local y = menuY + (i - 1) * 35
+        
+        -- Option background
+        love.graphics.setColor(0.2, 0.2, 0.3, 0.5)
+        love.graphics.rectangle("fill", w/2 - 180, y - 5, 360, 30, 5, 5)
+        
+        -- Icon
+        love.graphics.setColor(1, 1, 1)
+        love.graphics.print(option.icon, w/2 - 170, y)
+        
+        -- Key binding
+        love.graphics.setColor(0.3, 0.7, 1)
+        love.graphics.print(option.key, w/2 - 140, y)
+        
+        -- Description
+        love.graphics.setColor(0.9, 0.9, 0.9)
+        love.graphics.print(option.text, w/2 - 80, y)
+    end
+    
+    -- Version footer
+    love.graphics.setColor(0.5, 0.5, 0.6)
+    love.graphics.print("Week 5 Complete - Roguelike Systems Integrated", 10, h - 25)
 end
 
 function GameManager:drawShop()
@@ -838,19 +922,76 @@ function GameManager:drawShop()
 end
 
 function GameManager:drawResults()
-    love.graphics.setColor(0, 0, 0, 0.8)
-    love.graphics.rectangle("fill", 340, 100, 600, 500)
+    local w, h = love.graphics.getWidth(), love.graphics.getHeight()
     
+    -- Dark overlay
+    love.graphics.setColor(0, 0, 0, 0.85)
+    love.graphics.rectangle("fill", 0, 0, w, h)
+    
+    -- Results panel
+    local panelW, panelH = 600, 500
+    local panelX, panelY = w/2 - panelW/2, h/2 - panelH/2
+    
+    love.graphics.setColor(0.12, 0.12, 0.18)
+    love.graphics.rectangle("fill", panelX, panelY, panelW, panelH, 15, 15)
+    love.graphics.setColor(0.3, 0.5, 1, 0.5)
+    love.graphics.setLineWidth(3)
+    love.graphics.rectangle("line", panelX, panelY, panelW, panelH, 15, 15)
+    love.graphics.setLineWidth(1)
+    
+    -- Title
+    love.graphics.setColor(0.3, 0.7, 1)
+    love.graphics.printf("🎉 RUN COMPLETE!", panelX, panelY + 30, panelW, "center", 0, 1.2, 1.2)
+    
+    -- Score breakdown
+    local stats = {
+        {label = "Final Score", value = self.currentRun.score, icon = "🎯"},
+        {label = "Max Combo", value = self.currentRun.combo .. "x", icon = "🔥"},
+        {label = "Total Hits", value = self.currentRun.hits, icon = "💥"},
+        {label = "Total Damage", value = math.floor(self.currentRun.damage), icon = "⚡"}
+    }
+    
+    local statsY = panelY + 100
+    for i, stat in ipairs(stats) do
+        local y = statsY + (i - 1) * 40
+        
+        love.graphics.setColor(0.7, 0.7, 0.8)
+        love.graphics.print(stat.icon, panelX + 50, y)
+        love.graphics.print(stat.label, panelX + 80, y)
+        
+        love.graphics.setColor(1, 1, 1)
+        love.graphics.printf(tostring(stat.value), panelX, y, panelW - 50, "right")
+    end
+    
+    -- Subscriber rewards
+    love.graphics.setColor(0.2, 0.2, 0.3, 0.7)
+    love.graphics.rectangle("fill", panelX + 30, statsY + 180, panelW - 60, 80, 8, 8)
+    
+    love.graphics.setColor(0.3, 0.8, 0.3)
+    love.graphics.printf("📈 NEW SUBSCRIBERS", panelX + 30, statsY + 195, panelW - 60, "center")
     love.graphics.setColor(1, 1, 1)
-    love.graphics.print("RUN COMPLETE!", 500, 120, 0, 1.5)
+    love.graphics.printf(string.format("+%d", self.currentRun.subscribers), panelX + 30, statsY + 220, panelW - 60, "center", 0, 1.5, 1.5)
     
-    love.graphics.print(string.format("Score: %d", self.currentRun.score), 400, 200)
-    love.graphics.print(string.format("Subscribers Earned: +%d", self.currentRun.subscribers), 400, 230)
-    love.graphics.print(string.format("Total Subscribers: %d", self.currentRun.totalSubscribers), 400, 260)
+    -- Total
+    love.graphics.setColor(0.7, 0.7, 0.8)
+    love.graphics.printf(string.format("Total: %d subscribers", self.currentRun.totalSubscribers), 
+        panelX + 30, statsY + 245, panelW - 60, "center")
     
-    love.graphics.print("SPACE/R - Retry", 450, 500)
-    love.graphics.print("S - Shop", 450, 530)
-    love.graphics.print("ESC - Menu", 450, 560)
+    -- Action prompts
+    local promptY = panelY + panelH - 100
+    local prompts = {
+        {key = "SPACE/R", text = "Play Again"},
+        {key = "S", text = "Visit Shop"},
+        {key = "ESC", text = "Main Menu"}
+    }
+    
+    for i, prompt in ipairs(prompts) do
+        local y = promptY + (i - 1) * 25
+        love.graphics.setColor(0.3, 0.6, 1)
+        love.graphics.print(prompt.key, panelX + 150, y)
+        love.graphics.setColor(0.9, 0.9, 0.9)
+        love.graphics.print(" - " .. prompt.text, panelX + 230, y)
+    end
 end
 
 function GameManager:drawPauseOverlay()

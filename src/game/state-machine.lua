@@ -12,6 +12,7 @@ StateMachine.STATES = {
     CHARACTER_SELECT = "character_select",  -- Choose ragdoll
     TRUCK_SELECT = "truck_select",  -- Choose vehicle
     SHOP = "shop",              -- Upgrade shop
+    STATISTICS = "statistics",  -- Statistics & Progress page
     SETUP = "setup",            -- Pre-launch setup
     LAUNCH = "launch",          -- Launch phase
     GAMEPLAY = "gameplay",      -- Active gameplay

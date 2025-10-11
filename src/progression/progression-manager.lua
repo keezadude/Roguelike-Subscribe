@@ -296,8 +296,9 @@ function ProgressionManager:calculateSubscribers(score, bonuses)
         @return: Subscribers earned
     ]]
     
-    -- Base conversion: 10 score = 1 subscriber
-    local baseSubscribers = math.floor(score / 10)
+    -- Base conversion: 25 score = 1 subscriber (rebalanced for slower, deeper progression)
+    -- This makes each unlock feel more earned and extends gameplay loop
+    local baseSubscribers = math.floor(score / 25)
     
     -- Apply monetization upgrade
     local monetizationBonus = self:getUpgradeEffect("monetization")

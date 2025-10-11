@@ -14,6 +14,14 @@ local game = nil
 function love.load()
     print("\n=== Initializing Complete Game ===")
     
+    -- Create startup log
+    local logFile = love.filesystem.newFile("startup_log.txt")
+    logFile:open("w")
+    logFile:write("=== Startup Performance Log ===\n")
+    logFile:write(string.format("Started at: %s\n\n", os.date()))
+    
+    local loadStart = love.timer.getTime()
+    
     -- Window setup
     love.window.setTitle("Roguelike & Subscribe - Truck Dismount + Meta-Progression")
     love.window.setMode(1280, 720, {
@@ -23,10 +31,20 @@ function love.load()
         minheight = 720
     })
     
+    logFile:write(string.format("Window setup: %.3fs\n", love.timer.getTime() - loadStart))
+    
     -- Create game manager (initializes all systems)
+    local gmStart = love.timer.getTime()
     game = GameManager:new()
+    local gmTime = love.timer.getTime() - gmStart
+    
+    logFile:write(string.format("GameManager creation: %.3fs\n", gmTime))
+    logFile:write(string.format("Total love.load(): %.3fs\n", love.timer.getTime() - loadStart))
+    logFile:write("\n" .. string.rep("=", 40) .. "\n")
+    logFile:close()
     
     print("\n✓ Game loaded successfully!")
+    print(string.format("📊 Total load time: %.3fs (see startup_log.txt for details)", love.timer.getTime() - loadStart))
     print("\n" .. string.rep("=", 50))
     print("ROGUELIKE & SUBSCRIBE")
     print(string.rep("=", 50))
