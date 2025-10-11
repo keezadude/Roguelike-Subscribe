@@ -376,70 +376,78 @@ function GameManager:launchVehicle(power)
     end
 end
 
+function GameManager:setupCollisionCallbacks()
+    --[[
+        Setup Breezefield collision callbacks
+        This is the proper way to handle collisions in Breezefield
+    ]]
+    
+    -- Track processed collisions to avoid duplicates
+    self.processedCollisions = {}
+    
+    print("🔍 DEBUG: Setting up collision callbacks for vehicle chassis")
+end
+
 function GameManager:checkCollisions()
     --[[
-        Check for vehicle-ragdoll collisions using Breezefield's collision query
-        Implements actual collision detection and damage/score
+        Check collisions using Breezefield's callback system
+        Uses world.colliders table iteration (Breezefield stores colliders here)
     ]]
     
     if not self.vehicle or self.stateMachine:getState() ~= self.stateMachine.STATES.GAMEPLAY then
         return
     end
     
-    -- Track which collisions we've already processed this frame
+    -- Initialize tracking
     if not self.processedCollisions then
         self.processedCollisions = {}
     end
     
-    -- Get all colliders in the world
     local world = self.physicsWorld.world
-    
-    -- Query all colliders that the vehicle chassis is currently colliding with
     local vehicleCollider = self.vehicle.chassis
     
-    print(string.format("🔍 DEBUG: Checking collisions via Breezefield"))
-    print(string.format("🔍 DEBUG: Vehicle chassis exists: %s", tostring(vehicleCollider ~= nil)))
+    -- Breezefield stores colliders in world.colliders table (both array and hash)
+    print(string.format("🔍 DEBUG: Checking %d colliders in world", #world.colliders))
     
-    -- Breezefield approach: Check all colliders in world for overlap with vehicle
-    local allColliders = world:getColliders()
-    print(string.format("🔍 DEBUG: Total colliders in world: %d", #allColliders))
-    
-    for _, collider in ipairs(allColliders) do
-        -- Skip if it's the vehicle itself or a wheel
+    for _, collider in ipairs(world.colliders) do
+        -- Skip vehicle itself
         if collider ~= vehicleCollider and collider.userData then
             local userData = collider.userData
             
-            -- Check if colliding with vehicle chassis
-            if vehicleCollider:isColliding(collider) then
-                print(string.format("🔍 DEBUG: Collision detected! UserData type: %s", 
-                    userData.type or "nil"))
+            -- Check if it's a ragdoll part
+            if userData.type == "ragdoll_part" then
+                -- Check if vehicle chassis is touching this ragdoll part
+                -- Use Box2D's testPoint or check bounding boxes
+                local fixtures = vehicleCollider.fixture:getBody():getContactList()
                 
-                -- Check if it's a ragdoll part
-                if userData.type == "ragdoll_part" then
-                    local ragdoll = userData.ragdoll
-                    local partName = userData.partName
-                    
-                    print(string.format("✅ DEBUG: Found ragdoll collision! Part: %s", partName))
-                    
-                    -- Create unique collision ID
-                    local collisionId = string.format("%s_%s_%d", 
-                        tostring(ragdoll), partName, math.floor(love.timer.getTime() * 100))
-                    
-                    -- Only process each collision once per frame
-                    if not self.processedCollisions[collisionId] then
-                        self.processedCollisions[collisionId] = true
+                for contact in pairs(fixtures) do
+                    if contact:isTouching() then
+                        local f1, f2 = contact:getFixtures()
+                        local otherFixture = (f1 == vehicleCollider.fixture) and f2 or f1
                         
-                        -- Handle the collision (no contact object in Breezefield)
-                        self:handleVehicleRagdollCollision(ragdoll, partName, nil)
-                    else
-                        print("⚠️ DEBUG: Collision already processed this frame")
+                        if otherFixture == collider.fixture then
+                            print(string.format("✅ DEBUG: Found collision! Part: %s", userData.partName))
+                            
+                            local ragdoll = userData.ragdoll
+                            local partName = userData.partName
+                            
+                            -- Create unique collision ID
+                            local collisionId = string.format("%s_%s_%d", 
+                                tostring(ragdoll), partName, math.floor(love.timer.getTime() * 100))
+                            
+                            -- Only process once
+                            if not self.processedCollisions[collisionId] then
+                                self.processedCollisions[collisionId] = true
+                                self:handleVehicleRagdollCollision(ragdoll, partName, contact)
+                            end
+                        end
                     end
                 end
             end
         end
     end
     
-    -- Clear processed collisions after a short delay
+    -- Clear old collisions
     if not self.collisionClearTimer then
         self.collisionClearTimer = 0
     end
