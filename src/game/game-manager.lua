@@ -243,7 +243,7 @@ function GameManager:registerStates()
         end,
         draw = function()
             self:drawGameWorld()
-            self.scoreHUD:draw()
+            self.scoreHUD:draw(self.camera)
         end,
         keypressed = function(key)
             if key == "escape" then
@@ -277,7 +277,7 @@ function GameManager:registerStates()
     sm:registerState(sm.STATES.PAUSE, {
         draw = function()
             self:drawGameWorld()
-            self.scoreHUD:draw()
+            self.scoreHUD:draw(self.camera)
             self:drawPauseOverlay()
         end,
         keypressed = function(key)

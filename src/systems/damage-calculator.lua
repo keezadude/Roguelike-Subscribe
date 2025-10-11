@@ -8,11 +8,11 @@ DamageCalculator.__index = DamageCalculator
 -- Damage scaling constants
 DamageCalculator.CONSTANTS = {
     -- Energy to damage conversion
-    energyToDamageScale = 0.001,  -- Joules to damage points
+    energyToDamageScale = 0.005,  -- Joules to damage points (increased for more damage)
     
     -- Minimum impact threshold (prevents tiny bumps from dealing damage)
-    minImpactVelocity = 50,  -- pixels/second
-    minImpactEnergy = 1000,  -- Joules
+    minImpactVelocity = 10,  -- pixels/second (lowered from 50)
+    minImpactEnergy = 100,  -- Joules (lowered from 1000)
     
     -- Maximum damage cap per hit
     maxDamagePerHit = 500,
