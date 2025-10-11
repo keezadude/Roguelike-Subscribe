@@ -378,7 +378,7 @@ end
 
 function GameManager:checkCollisions()
     --[[
-        Check for vehicle-ragdoll collisions
+        Check for vehicle-ragdoll collisions using Breezefield's collision query
         Implements actual collision detection and damage/score
     ]]
     
@@ -391,30 +391,52 @@ function GameManager:checkCollisions()
         self.processedCollisions = {}
     end
     
-    -- Check vehicle chassis collisions
-    local contacts = self.vehicle.chassis:getContacts()
+    -- Get all colliders in the world
+    local world = self.physicsWorld.world
     
-    for _, contact in ipairs(contacts) do
-        if contact:isTouching() then
-            local f1, f2 = contact:getFixtures()
-            local otherFixture = (f1 == self.vehicle.chassis.fixture) and f2 or f1
-            local otherBody = otherFixture:getUserData()
+    -- Query all colliders that the vehicle chassis is currently colliding with
+    local vehicleCollider = self.vehicle.chassis
+    
+    -- Get enter collision data from Breezefield
+    local enterCollisionData = vehicleCollider:getEnterCollisionData()
+    
+    print(string.format("🔍 DEBUG: Checking collisions via Breezefield"))
+    print(string.format("🔍 DEBUG: Vehicle chassis exists: %s", tostring(vehicleCollider ~= nil)))
+    
+    -- Breezefield approach: Check all colliders in world for overlap with vehicle
+    local allColliders = world:getColliders()
+    print(string.format("🔍 DEBUG: Total colliders in world: %d", #allColliders))
+    
+    for _, collider in ipairs(allColliders) do
+        -- Skip if it's the vehicle itself or a wheel
+        if collider ~= vehicleCollider and collider.userData then
+            local userData = collider.userData
             
-            -- Check if it's a ragdoll part
-            if otherBody and otherBody.type == "ragdoll_part" then
-                local ragdoll = otherBody.ragdoll
-                local partName = otherBody.partName
+            -- Check if colliding with vehicle chassis
+            if vehicleCollider:isColliding(collider) then
+                print(string.format("🔍 DEBUG: Collision detected! UserData type: %s", 
+                    userData.type or "nil"))
                 
-                -- Create unique collision ID
-                local collisionId = string.format("%s_%s_%d", 
-                    tostring(ragdoll), partName, love.timer.getTime() * 1000)
-                
-                -- Only process each collision once per frame
-                if not self.processedCollisions[collisionId] then
-                    self.processedCollisions[collisionId] = true
+                -- Check if it's a ragdoll part
+                if userData.type == "ragdoll_part" then
+                    local ragdoll = userData.ragdoll
+                    local partName = userData.partName
                     
-                    -- Handle the collision
-                    self:handleVehicleRagdollCollision(ragdoll, partName, contact)
+                    print(string.format("✅ DEBUG: Found ragdoll collision! Part: %s", partName))
+                    
+                    -- Create unique collision ID
+                    local collisionId = string.format("%s_%s_%d", 
+                        tostring(ragdoll), partName, math.floor(love.timer.getTime() * 100))
+                    
+                    -- Only process each collision once per frame
+                    if not self.processedCollisions[collisionId] then
+                        self.processedCollisions[collisionId] = true
+                        
+                        -- Handle the collision (no contact object in Breezefield)
+                        self:handleVehicleRagdollCollision(ragdoll, partName, nil)
+                    else
+                        print("⚠️ DEBUG: Collision already processed this frame")
+                    end
                 end
             end
         end
@@ -438,20 +460,28 @@ function GameManager:handleVehicleRagdollCollision(ragdoll, partName, contact)
         
         @param ragdoll: Ragdoll entity
         @param partName: Which body part was hit
-        @param contact: Contact object
+        @param contact: Contact object (optional, nil for Breezefield)
     ]]
     
     -- Get velocities
     local vx, vy = self.vehicle:getVelocity()
     local part = ragdoll.parts[partName]
-    if not part then return end
+    if not part then 
+        print(string.format("⚠️ DEBUG: Part '%s' not found in ragdoll", partName))
+        return 
+    end
     
     local rvx, rvy = part:getLinearVelocity()
     
     -- Get collision point
-    local cx, cy = contact:getPositions()
+    local cx, cy
+    if contact and contact.getPositions then
+        cx, cy = contact:getPositions()
+    end
+    
+    -- Fall back to ragdoll position if no contact point
     if not cx then
-        cx, cy = ragdoll:getPosition()
+        cx, cy = part:getPosition()
     end
     
     -- Build collision data
@@ -464,10 +494,15 @@ function GameManager:handleVehicleRagdollCollision(ragdoll, partName, contact)
     }
     
     -- Calculate damage
+    print(string.format("🔍 DEBUG: Calculating damage - Vehicle vel: (%.1f, %.1f), Ragdoll vel: (%.1f, %.1f)", 
+        vx, vy, rvx, rvy))
+    
     local damageResult = self.damageCalculator:calculateCollisionDamage(
         self.vehicle, ragdoll, collisionData)
     
-    if damageResult.damage > 0 then
+    print(string.format("🔍 DEBUG: Damage calculated: %.1f", damageResult and damageResult.damage or 0))
+    
+    if damageResult and damageResult.damage > 0 then
         -- Apply damage to ragdoll
         ragdoll:takeDamage(damageResult.damage)
         
