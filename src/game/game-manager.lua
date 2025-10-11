@@ -22,6 +22,7 @@ local AchievementSystem = require('src.progression.achievement-system')
 local AchievementNotification = require('src.ui.achievement-notification')
 local ShopUI = require('src.ui.shop-ui')
 local StatisticsUI = require('src.ui.statistics-ui')
+local LevelManager = require('src.systems.level-manager')
 
 local GameManager = {}
 GameManager.__index = GameManager
@@ -44,6 +45,10 @@ function GameManager:new()
     local t3 = love.timer.getTime()
     self.progressionManager = ProgressionManager:new(self.saveManager)
     print(string.format("  ✓ ProgressionManager: %.3fs", love.timer.getTime() - t3))
+    
+    -- Level Manager
+    self.levelManager = LevelManager:new(self.saveManager)
+    self.levelManager:setLevel("studio")  -- Default level
     
     local t4 = love.timer.getTime()
     self.achievementSystem = AchievementSystem:new(self.saveManager)
@@ -814,7 +819,9 @@ function GameManager:draw()
 end
 
 function GameManager:drawGameWorld()
-    love.graphics.clear(0.15, 0.15, 0.2)
+    -- Use level's background color
+    local bgColor = self.levelManager:getBackgroundColor()
+    love.graphics.clear(bgColor[1], bgColor[2], bgColor[3])
     
     -- Week 4: Use camera system
     self.camera:attach()

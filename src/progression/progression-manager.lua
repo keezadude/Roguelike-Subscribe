@@ -67,6 +67,67 @@ ProgressionManager.UPGRADES = {
         baseCost = 500,
         costMultiplier = 1.0,
         effect = function(level) return level > 0 and 1.5 or 1.0 end
+    },
+    
+    -- NEW: Advanced upgrades for deeper meta-progression
+    clickbait_titles = {
+        name = "Clickbait Titles",
+        description = "Attract more subscribers per run",
+        icon = "📰",
+        maxLevel = 5,
+        baseCost = 250,
+        costMultiplier = 1.7,
+        effect = function(level) return 1 + (level * 0.15) end
+    },
+    
+    thumbnail_master = {
+        name = "Thumbnail Master",
+        description = "Increase combo duration",
+        icon = "🎨",
+        maxLevel = 4,
+        baseCost = 300,
+        costMultiplier = 1.8,
+        effect = function(level) return 1 + (level * 0.25) end  -- +25% combo window per level
+    },
+    
+    stream_quality = {
+        name = "4K Streaming",
+        description = "Better vehicle handling",
+        icon = "📹",
+        maxLevel = 3,
+        baseCost = 350,
+        costMultiplier = 2.0,
+        effect = function(level) return 1 + (level * 0.15) end
+    },
+    
+    sponsored_content = {
+        name = "Sponsored Content",
+        description = "Extra subscribers from special hits",
+        icon = "💎",
+        maxLevel = 3,
+        baseCost = 400,
+        costMultiplier = 2.0,
+        effect = function(level) return 1 + (level * 0.30) end
+    },
+    
+    notification_squad = {
+        name = "Notification Squad",
+        description = "Start runs with bonus momentum",
+        icon = "🔔",
+        maxLevel = 1,
+        baseCost = 800,
+        costMultiplier = 1.0,
+        effect = function(level) return level > 0 and 1.25 or 1.0 end
+    },
+    
+    merch_shelf = {
+        name = "Merch Shelf",
+        description = "Passive subscriber generation",
+        icon = "👕",
+        maxLevel = 5,
+        baseCost = 600,
+        costMultiplier = 2.5,
+        effect = function(level) return level * 5 end  -- +5 passive subs per level per run
     }
 }
 
@@ -74,27 +135,42 @@ ProgressionManager.UPGRADES = {
 ProgressionManager.UNLOCKABLES = {
     -- Characters (ragdolls)
     characters = {
-        default = {name = "Default Creator", cost = 0, unlocked = true},
-        streamer = {name = "Live Streamer", cost = 500, description = "Blue hair, energetic"},
-        vlogger = {name = "Daily Vlogger", cost = 800, description = "Camera gear visible"},
-        gamer = {name = "Pro Gamer", cost = 1000, description = "Gaming headset"},
-        influencer = {name = "Mega Influencer", cost = 1500, description = "Stylish outfit"}
+        default = {name = "Default Creator", cost = 0, unlocked = true, stats = {weight = 1.0}},
+        streamer = {name = "Live Streamer", cost = 500, description = "High energy personality", stats = {weight = 0.9, bonus_subs = 1.1}},
+        vlogger = {name = "Daily Vlogger", cost = 800, description = "Camera enthusiast", stats = {weight = 1.1, damage_multiplier = 1.05}},
+        gamer = {name = "Pro Gamer", cost = 1000, description = "RGB everything", stats = {weight = 0.95, combo_bonus = 1.15}},
+        influencer = {name = "Mega Influencer", cost = 1500, description = "Maximum clout", stats = {weight = 1.2, subscriber_magnet = 1.25}},
+        -- NEW characters
+        podcast_host = {name = "Podcast Host", cost = 1200, description = "Audio quality matters", stats = {weight = 1.0, special_hits = 1.2}},
+        tutorial_guru = {name = "Tutorial Guru", cost = 1800, description = "10-minute expertise", stats = {weight = 0.85, combo_window = 1.3}},
+        reaction_specialist = {name = "Reaction Channel", cost = 2000, description = "Peak emotion", stats = {weight = 1.15, score_multiplier = 1.15}}
     },
     
     -- Trucks
     trucks = {
-        default = {name = "Starter Van", cost = 0, unlocked = true},
-        pickup = {name = "Pickup Truck", cost = 600, description = "+10% power"},
-        semi = {name = "Semi Truck", cost = 1200, description = "+20% mass"},
-        monster = {name = "Monster Truck", cost = 2000, description = "Huge wheels, more bounce"}
+        default = {name = "Starter Van", cost = 0, unlocked = true, stats = {power = 1.0, mass = 1.0, handling = 1.0}},
+        pickup = {name = "Pickup Truck", cost = 600, description = "Reliable workhorse", stats = {power = 1.1, mass = 1.05, handling = 1.0}},
+        semi = {name = "Semi Truck", cost = 1200, description = "Maximum impact", stats = {power = 0.9, mass = 1.3, handling = 0.9}},
+        monster = {name = "Monster Truck", cost = 2000, description = "Extreme air time", stats = {power = 1.2, mass = 1.1, handling = 1.2}},
+        -- NEW trucks
+        sports_car = {name = "Sports Car", cost = 1600, description = "Speed demon", stats = {power = 1.3, mass = 0.8, handling = 1.3}},
+        bus = {name = "Tour Bus", cost = 1800, description = "Subscriber transport", stats = {power = 0.8, mass = 1.4, handling = 0.85}},
+        tank = {name = "Military Tank", cost = 2500, description = "Unstoppable force", stats = {power = 1.0, mass = 1.6, handling = 0.7}},
+        rocket_car = {name = "Rocket Car", cost = 3000, description = "To the moon!", stats = {power = 1.5, mass = 0.9, handling = 1.4}}
     },
     
     -- Levels
     levels = {
-        arena_01 = {name = "Studio Arena", cost = 0, unlocked = true},
-        street = {name = "Street Scene", cost = 400, description = "Urban obstacles"},
-        stadium = {name = "Stadium", cost = 800, description = "Big jumps"},
-        rooftop = {name = "Rooftop", cost = 1500, description = "Extreme heights"}
+        studio = {name = "Studio Arena", cost = 0, unlocked = true, theme = "indoor", difficulty = 1},
+        street = {name = "Street Scene", cost = 400, description = "Urban chaos", theme = "city", difficulty = 2},
+        stadium = {name = "Stadium", cost = 800, description = "Crowd goes wild", theme = "sports", difficulty = 3},
+        rooftop = {name = "Rooftop", cost = 1500, description = "Sky-high stunts", theme = "heights", difficulty = 4},
+        -- NEW levels
+        parking_lot = {name = "Parking Garage", cost = 600, description = "Concrete jungle", theme = "urban", difficulty = 2},
+        construction = {name = "Construction Site", cost = 1000, description = "Hazardous obstacles", theme = "industrial", difficulty = 3},
+        beach = {name = "Beach Resort", cost = 1200, description = "Sandy carnage", theme = "tropical", difficulty = 2},
+        highway = {name = "Highway", cost = 1400, description = "High-speed mayhem", theme = "road", difficulty = 4},
+        volcano = {name = "Active Volcano", cost = 2500, description = "Lava hazards!", theme = "extreme", difficulty = 5}
     }
 }
 

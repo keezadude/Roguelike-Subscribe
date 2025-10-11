@@ -271,6 +271,56 @@ AchievementSystem.ACHIEVEMENTS = {
         icon = "❤️",
         requirement = {type = "playtime_hours", value = 10},
         hidden = true
+    },
+    
+    -- NEW: Content Expansion Achievements
+    {
+        id = "world_traveler",
+        name = "World Traveler",
+        description = "Play on 5 different levels",
+        icon = "🌍",
+        requirement = {type = "levels_played", value = 5},
+        hidden = false
+    },
+    {
+        id = "garage_king",
+        name = "Garage King",
+        description = "Unlock 5 different vehicles",
+        icon = "🚗",
+        requirement = {type = "vehicles_unlocked", value = 5},
+        hidden = false
+    },
+    {
+        id = "content_creator",
+        name = "Content Creator",
+        description = "Unlock all characters",
+        icon = "🎬",
+        requirement = {type = "all_characters", value = 1},
+        hidden = false
+    },
+    {
+        id = "fully_upgraded",
+        name = "Fully Upgraded",
+        description = "Max out any upgrade",
+        icon = "⭐",
+        requirement = {type = "max_upgrade", value = 1},
+        hidden = false
+    },
+    {
+        id = "high_roller",
+        name = "High Roller",
+        description = "Earn 100,000 subscribers",
+        icon = "💰",
+        requirement = {type = "subscribers", value = 100000},
+        hidden = false
+    },
+    {
+        id = "extreme_sports",
+        name = "Extreme Sports",
+        description = "Complete a run on the Volcano level",
+        icon = "🌋",
+        requirement = {type = "volcano_cleared", value = 1},
+        hidden = true
     }
 }
 
