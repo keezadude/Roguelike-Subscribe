@@ -8,11 +8,13 @@ DamageCalculator.__index = DamageCalculator
 -- Damage scaling constants
 DamageCalculator.CONSTANTS = {
     -- Energy to damage conversion
-    energyToDamageScale = 0.005,  -- Joules to damage points (increased for more damage)
+    -- Reduced from 0.01 to 0.000005 to prevent all hits capping at max damage
+    -- At this scale: 150 px/s = ~85 dmg, 300 px/s = ~340 dmg, 600 px/s = caps at 500
+    energyToDamageScale = 0.000005,
     
     -- Minimum impact threshold (prevents tiny bumps from dealing damage)
-    minImpactVelocity = 10,  -- pixels/second (lowered from 50)
-    minImpactEnergy = 100,  -- Joules (lowered from 1000)
+    minImpactVelocity = 50,  -- pixels/second (increased from 5 to reduce spam)
+    minImpactEnergy = 10000,  -- Joules (increased to match new scale)
     
     -- Maximum damage cap per hit
     maxDamagePerHit = 500,

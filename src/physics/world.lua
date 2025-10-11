@@ -20,7 +20,7 @@ PhysicsWorld.MASKS = {
     PLAYER = {ENEMY = true, PROJECTILE = true, WALL = true, PICKUP = true},
     ENEMY = {PLAYER = true, PROJECTILE = true, WALL = true, ENEMY = true},
     PROJECTILE = {PLAYER = true, ENEMY = true, WALL = true},
-    WALL = {PLAYER = true, ENEMY = true, PROJECTILE = true},
+    WALL = {PLAYER = true, ENEMY = true, PROJECTILE = true, WALL = true},
     PICKUP = {PLAYER = true},
     SENSOR = {PLAYER = true, ENEMY = true}
 }
@@ -42,12 +42,15 @@ function PhysicsWorld:new(gravityX, gravityY, options)
     -- World properties
     self.pixelScale = options.pixelScale or 64  -- pixels per meter
     self.timeStep = options.timeStep or 1/60    -- fixed timestep
-    self.velocityIterations = options.velocityIterations or 8
-    self.positionIterations = options.positionIterations or 3
+    self.velocityIterations = options.velocityIterations or 6  -- Reduced for performance
+    self.positionIterations = options.positionIterations or 2  -- Reduced for performance
     
     -- Collision tracking
     self.collisionCallbacks = {}
     self.activeCollisions = {}
+    
+    -- Debug mode
+    self.debugMode = options.debugMode or false
     
     -- Debug options
     self.debugDraw = false
@@ -72,6 +75,41 @@ function PhysicsWorld:setupCollisionCallbacks()
     -- Breezefield uses enter/exit/preSolve/postSolve callbacks
     -- These are set on individual colliders, not the world
     -- We'll provide helper methods to register global callbacks
+end
+
+function PhysicsWorld:setCollisionFilter(collider, category)
+    --[[
+        Set collision filter data for a collider based on category
+        
+        @param collider: Breezefield Collider
+        @param category: Collision category name (string)
+    ]]
+    
+    -- Convert category name to bit flag
+    local categoryBits = self.CATEGORIES[category]
+    if not categoryBits then
+        print(string.format("⚠️ DEBUG: Unknown collision category '%s'", category))
+        return
+    end
+    
+    -- Set what this category collides with
+    local maskBits = 0
+    local maskDef = self.MASKS[category]
+    if maskDef then
+        for maskCategory, shouldCollide in pairs(maskDef) do
+            if shouldCollide and self.CATEGORIES[maskCategory] then
+                maskBits = maskBits + self.CATEGORIES[maskCategory]
+            end
+        end
+    end
+    
+    -- Set filter data: categoryBits, maskBits, groupIndex
+    collider.fixture:setFilterData(categoryBits, maskBits, 0)
+    
+    if self.debugMode then
+        print(string.format("🔍 DEBUG: Set collision filter for %s - category: %d, mask: %d", 
+            category, categoryBits, maskBits))
+    end
 end
 
 function PhysicsWorld:registerCollisionCallback(category1, category2, callbackType, callback)
@@ -144,7 +182,6 @@ function PhysicsWorld:createBody(bodyType, x, y, options)
     else
         collider:setType("dynamic")
     end
-    
     -- Set physics properties
     if options.density then collider:setDensity(options.density) end
     if options.friction then collider:setFriction(options.friction) end
@@ -156,6 +193,7 @@ function PhysicsWorld:createBody(bodyType, x, y, options)
     -- Set collision category
     if options.category then
         collider.category = options.category
+        self:setCollisionFilter(collider, options.category)
     end
     
     -- Attach custom user data

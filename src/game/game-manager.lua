@@ -28,13 +28,25 @@ GameManager.__index = GameManager
 function GameManager:new()
     local self = setmetatable({}, GameManager)
     
+    local startTime = love.timer.getTime()
     print("\n=== Initializing Game Manager ===")
     
     -- Core managers
+    local t1 = love.timer.getTime()
     self.stateMachine = StateMachine:new()
+    print(string.format("  ✓ StateMachine: %.3fs", love.timer.getTime() - t1))
+    
+    local t2 = love.timer.getTime()
     self.saveManager = SaveManager:new()
+    print(string.format("  ✓ SaveManager: %.3fs", love.timer.getTime() - t2))
+    
+    local t3 = love.timer.getTime()
     self.progressionManager = ProgressionManager:new(self.saveManager)
+    print(string.format("  ✓ ProgressionManager: %.3fs", love.timer.getTime() - t3))
+    
+    local t4 = love.timer.getTime()
     self.achievementSystem = AchievementSystem:new(self.saveManager)
+    print(string.format("  ✓ AchievementSystem: %.3fs", love.timer.getTime() - t4))
     
     -- Game systems
     self.physicsWorld = nil
@@ -70,11 +82,20 @@ function GameManager:new()
     -- Settings
     self.debugMode = false
     
+    -- Automated testing
+    self.testRunner = nil
+    self.testMode = false
+    
     -- Initialize
     self:initializeSystems()
     self:registerStates()
     
-    print("✓ Game Manager initialized")
+    local totalTime = love.timer.getTime() - startTime
+    print(string.format("✓ Game Manager initialized in %.3fs", totalTime))
+    
+    if totalTime > 1.0 then
+        print("⚠️  WARNING: Slow initialization detected (>1s)")
+    end
     
     return self
 end
@@ -84,35 +105,46 @@ function GameManager:initializeSystems()
         Initialize all game systems
     ]]
     
+    print("\n  Initializing subsystems...")
+    
     -- Physics
+    local t1 = love.timer.getTime()
     self.physicsWorld = PhysicsWorld:new(0, 9.81 * 64)
+    print(string.format("    • PhysicsWorld: %.3fs", love.timer.getTime() - t1))
     
     -- Game systems
+    local t2 = love.timer.getTime()
     self.damageCalculator = DamageCalculator:new()
     self.scoreManager = ScoreManager:new()
     self.soundManager = SoundManager:new()
+    print(string.format("    • Game systems: %.3fs", love.timer.getTime() - t2))
     
     -- Debug
+    local t3 = love.timer.getTime()
     self.debugRenderer = PhysicsRenderer:new(self.physicsWorld, {
         showBodies = false,
         showStats = true
     })
+    print(string.format("    • DebugRenderer: %.3fs", love.timer.getTime() - t3))
     
     -- Week 4: Visual effects
+    local t4 = love.timer.getTime()
     self.camera = CameraSystem:new({
-        followSpeed = 3.0,
-        lookahead = 100
+        followSpeed = 5.0,  -- Faster camera follow
+        lookahead = 150     -- More lookahead for fast-moving vehicle
     })
     
     self.particleSystem = ParticleSystem:new({
-        maxParticles = 1000
+        maxParticles = 500  -- Reduced for performance
     })
     
     self.screenEffects = ScreenEffects:new({
         enabled = true
     })
+    print(string.format("    • Visual systems: %.3fs", love.timer.getTime() - t4))
     
     -- UI
+    local t5 = love.timer.getTime()
     self.scoreHUD = ScoreHUD:new(self.scoreManager)
     self.launchControl = LaunchControl:new({
         onLaunch = function(power)
@@ -125,8 +157,9 @@ function GameManager:initializeSystems()
     
     -- Week 5: Shop UI
     self.shopUI = ShopUI:new(self.progressionManager, self.saveManager)
+    print(string.format("    • UI systems: %.3fs", love.timer.getTime() - t5))
     
-    print("✓ All systems initialized")
+    print("  ✓ All subsystems initialized")
 end
 
 function GameManager:registerStates()
@@ -217,6 +250,9 @@ function GameManager:registerStates()
             end
         end,
         update = function(dt)
+            -- Track run time
+            self.runTimer = (self.runTimer or 0) + dt
+            
             -- Get scaled dt for slow motion
             local scaledDT = self.screenEffects:getScaledDT(dt)
             
@@ -313,16 +349,24 @@ function GameManager:setupRun()
     -- Create environment
     self:createEnvironment()
     
-    -- Spawn vehicle
-    self:spawnVehicle(150, 550)
+    -- Spawn vehicle (position it properly above ground)
+    local screenHeight = love.graphics.getHeight()
+    local groundY = screenHeight - 80  -- Position vehicle on ramp
+    self:spawnVehicle(100, groundY - 50)
     
-    -- Spawn ragdolls
+    -- Spawn ragdolls in a line in the vehicle's path
+    local ragdollY = screenHeight - 100  -- Position ragdolls on ground
     for i = 1, 3 do
-        self:spawnRagdoll(400 + i * 150, 500)
+        -- Position ragdolls in a line ahead of the vehicle
+        self:spawnRagdoll(350 + i * 180, ragdollY)
     end
     
     -- Reset run data
     self.currentRun = {score = 0, damage = 0, hits = 0, combo = 0, subscribers = 0}
+    
+    -- Reset run timer
+    self.runTimer = 0
+    self.minRunTime = 5.0  -- Minimum 5 seconds before run can end
 end
 
 function GameManager:createEnvironment()
@@ -339,19 +383,25 @@ function GameManager:createEnvironment()
     end
     self.walls = {}
     
-    -- Ground
+    -- Ground (long enough for the entire run)
     table.insert(self.walls, Wall:new(self.physicsWorld, 
-        screenWidth / 2, screenHeight - 20, 
-        screenWidth * 2, 40, 
+        screenWidth * 2, screenHeight - 20, 
+        screenWidth * 4, 40, 
         {color = {0.3, 0.5, 0.3}, pattern = "solid"}))
     
-    -- Ramp
+    -- Launch ramp - angled to send vehicle forward and up
     local ramp = Wall:new(self.physicsWorld, 
-        200, screenHeight - 100, 
-        200, 20, 
+        150, screenHeight - 80, 
+        180, 20, 
         {color = {0.6, 0.4, 0.2}, pattern = "solid"})
-    ramp.body:setAngle(-0.2)
+    ramp.body:setAngle(-0.3)  -- Steeper angle for better launch
     table.insert(self.walls, ramp)
+    
+    -- Add some obstacles for variety
+    table.insert(self.walls, Wall:new(self.physicsWorld,
+        900, screenHeight - 80,
+        40, 100,
+        {color = {0.5, 0.5, 0.5}, pattern = "solid"}))
 end
 
 function GameManager:spawnVehicle(x, y)
@@ -362,6 +412,9 @@ function GameManager:spawnVehicle(x, y)
     self.vehicle = Vehicle:new(self.physicsWorld, x, y, {
         chassisColor = {0.8, 0.2, 0.2}
     })
+    
+    -- Set up collision callbacks for the new vehicle
+    self:setupCollisionCallbacks()
 end
 
 function GameManager:spawnRagdoll(x, y)
@@ -384,95 +437,139 @@ function GameManager:setupCollisionCallbacks()
     
     -- Track processed collisions to avoid duplicates
     self.processedCollisions = {}
+    self.collisionCooldowns = {}  -- Per-ragdoll cooldowns
     
-    print("🔍 DEBUG: Setting up collision callbacks for vehicle chassis")
+    -- Register collision callback for vehicle chassis hitting ragdoll parts
+    if self.vehicle and self.vehicle.chassis then
+        local vehicleCollider = self.vehicle.chassis
+        
+        -- Set up postSolve callback for collision detection
+        vehicleCollider.postSolve = function(this, other, contact, normalImpulse, tangentImpulse)
+            -- Check if the other collider is a ragdoll part
+            if other.userData and other.userData.type == "ragdoll_part" then
+                local ragdoll = other.userData.ragdoll
+                local partName = other.userData.partName
+                
+                -- Check cooldown to prevent spam
+                local ragdollId = tostring(ragdoll)
+                local now = love.timer.getTime()
+                if self.collisionCooldowns[ragdollId] and now - self.collisionCooldowns[ragdollId] < 0.1 then
+                    return  -- Skip if hit this ragdoll too recently
+                end
+                self.collisionCooldowns[ragdollId] = now
+                
+                -- Process collision
+                self:handleVehicleRagdollCollision(ragdoll, partName, contact, normalImpulse or 0)
+            end
+        end
+    end
+    
+    -- Also set up callbacks for wheels hitting ragdolls
+    if self.vehicle and self.vehicle.wheels then
+        for wheelName, wheel in pairs(self.vehicle.wheels) do
+            wheel.postSolve = function(this, other, contact, normalImpulse, tangentImpulse)
+                if other.userData and other.userData.type == "ragdoll_part" then
+                    local ragdoll = other.userData.ragdoll
+                    local partName = other.userData.partName
+                    
+                    local ragdollId = tostring(ragdoll)
+                    local now = love.timer.getTime()
+                    if self.collisionCooldowns[ragdollId] and now - self.collisionCooldowns[ragdollId] < 0.1 then
+                        return
+                    end
+                    self.collisionCooldowns[ragdollId] = now
+                    
+                    self:handleVehicleRagdollCollision(ragdoll, partName, contact, normalImpulse or 0)
+                end
+            end
+        end
+    end
+    
+    if self.debugMode then
+        print("🔍 DEBUG: Setting up collision callbacks for vehicle chassis and wheels")
+    end
 end
 
 function GameManager:checkCollisions()
     --[[
-        Check collisions using Breezefield's callback system
-        Uses world.colliders table iteration (Breezefield stores colliders here)
+        Manual collision checking as fallback
+        Breezefield callbacks should handle most collisions,
+        but we'll also do manual checks to ensure we don't miss hits
     ]]
     
     if not self.vehicle or self.stateMachine:getState() ~= self.stateMachine.STATES.GAMEPLAY then
         return
     end
     
-    -- Initialize tracking
-    if not self.processedCollisions then
-        self.processedCollisions = {}
+    -- Get vehicle bounds
+    local vx, vy = self.vehicle:getPosition()
+    local vehicleVelX, vehicleVelY = self.vehicle:getVelocity()
+    local vehicleSpeed = math.sqrt(vehicleVelX * vehicleVelX + vehicleVelY * vehicleVelY)
+    
+    -- Only check if vehicle is moving fast enough
+    if vehicleSpeed < 20 then
+        return
     end
     
-    local world = self.physicsWorld.world
-    local vehicleCollider = self.vehicle.chassis
-    
-    -- Breezefield stores colliders in world.colliders table (both array and hash)
-    print(string.format("🔍 DEBUG: Checking %d colliders in world", #world.colliders))
-    
-    for _, collider in ipairs(world.colliders) do
-        -- Skip vehicle itself
-        if collider ~= vehicleCollider and collider.userData then
-            local userData = collider.userData
+    -- Check proximity to each ragdoll
+    for _, ragdoll in ipairs(self.ragdolls) do
+        if ragdoll.alive then
+            local rx, ry = ragdoll:getPosition()
+            local dist = math.sqrt((vx - rx)^2 + (vy - ry)^2)
             
-            -- Check if it's a ragdoll part
-            if userData.type == "ragdoll_part" then
-                -- Check if vehicle chassis is touching this ragdoll part
-                -- Use Box2D's testPoint or check bounding boxes
-                local fixtures = vehicleCollider.fixture:getBody():getContactList()
-                
-                for contact in pairs(fixtures) do
-                    if contact:isTouching() then
-                        local f1, f2 = contact:getFixtures()
-                        local otherFixture = (f1 == vehicleCollider.fixture) and f2 or f1
+            -- If close enough, check for collision with parts
+            if dist < 100 then
+                for partName, part in pairs(ragdoll.parts) do
+                    local px, py = part:getPosition()
+                    local partDist = math.sqrt((vx - px)^2 + (vy - py)^2)
+                    
+                    -- Collision detected
+                    if partDist < 50 then
+                        local ragdollId = tostring(ragdoll)
+                        local now = love.timer.getTime()
                         
-                        if otherFixture == collider.fixture then
-                            print(string.format("✅ DEBUG: Found collision! Part: %s", userData.partName))
+                        -- Cooldown check
+                        if not self.collisionCooldowns then
+                            self.collisionCooldowns = {}
+                        end
+                        
+                        if not self.collisionCooldowns[ragdollId] or now - self.collisionCooldowns[ragdollId] > 0.15 then
+                            self.collisionCooldowns[ragdollId] = now
                             
-                            local ragdoll = userData.ragdoll
-                            local partName = userData.partName
+                            -- Create collision data
+                            local partVelX, partVelY = part:getLinearVelocity()
+                            local collisionData = {
+                                bodyPart = partName,
+                                impactPoint = {x = px, y = py},
+                                vehicleVelocity = {x = vehicleVelX, y = vehicleVelY},
+                                ragdollVelocity = {x = partVelX, y = partVelY},
+                                normalImpulse = vehicleSpeed * 10  -- Approximate impulse
+                            }
                             
-                            -- Create unique collision ID
-                            local collisionId = string.format("%s_%s_%d", 
-                                tostring(ragdoll), partName, math.floor(love.timer.getTime() * 100))
-                            
-                            -- Only process once
-                            if not self.processedCollisions[collisionId] then
-                                self.processedCollisions[collisionId] = true
-                                self:handleVehicleRagdollCollision(ragdoll, partName, contact)
-                            end
+                            self:handleVehicleRagdollCollisionData(ragdoll, collisionData)
+                            break  -- Only process one part per ragdoll per frame
                         end
                     end
                 end
             end
         end
     end
-    
-    -- Clear old collisions
-    if not self.collisionClearTimer then
-        self.collisionClearTimer = 0
-    end
-    
-    self.collisionClearTimer = self.collisionClearTimer + love.timer.getDelta()
-    if self.collisionClearTimer > 0.1 then
-        self.processedCollisions = {}
-        self.collisionClearTimer = 0
-    end
 end
 
-function GameManager:handleVehicleRagdollCollision(ragdoll, partName, contact)
+function GameManager:handleVehicleRagdollCollision(ragdoll, partName, contact, normalImpulse)
     --[[
-        Handle collision between vehicle and ragdoll part
+        Handle collision between vehicle and ragdoll part (from Breezefield callback)
         
         @param ragdoll: Ragdoll entity
         @param partName: Which body part was hit
-        @param contact: Contact object (optional, nil for Breezefield)
+        @param contact: Contact object
+        @param normalImpulse: Normal impulse value from collision
     ]]
     
     -- Get velocities
     local vx, vy = self.vehicle:getVelocity()
     local part = ragdoll.parts[partName]
     if not part then 
-        print(string.format("⚠️ DEBUG: Part '%s' not found in ragdoll", partName))
         return 
     end
     
@@ -484,7 +581,7 @@ function GameManager:handleVehicleRagdollCollision(ragdoll, partName, contact)
         cx, cy = contact:getPositions()
     end
     
-    -- Fall back to ragdoll position if no contact point
+    -- Fall back to part position if no contact point
     if not cx then
         cx, cy = part:getPosition()
     end
@@ -495,17 +592,41 @@ function GameManager:handleVehicleRagdollCollision(ragdoll, partName, contact)
         impactPoint = {x = cx, y = cy},
         vehicleVelocity = {x = vx, y = vy},
         ragdollVelocity = {x = rvx, y = rvy},
-        normalImpulse = 0
+        normalImpulse = normalImpulse or 0
     }
     
+    self:handleVehicleRagdollCollisionData(ragdoll, collisionData)
+end
+
+function GameManager:handleVehicleRagdollCollisionData(ragdoll, collisionData)
+    --[[
+        Process collision data and apply damage/effects
+        
+        @param ragdoll: Ragdoll entity
+        @param collisionData: Collision information
+    ]]
+    
+    local partName = collisionData.bodyPart
+    local vx = collisionData.vehicleVelocity.x
+    local vy = collisionData.vehicleVelocity.y
+    local rvx = collisionData.ragdollVelocity.x
+    local rvy = collisionData.ragdollVelocity.y
+    local cx = collisionData.impactPoint.x
+    local cy = collisionData.impactPoint.y
+    local normalImpulse = collisionData.normalImpulse or 0
+    
     -- Calculate damage
-    print(string.format("🔍 DEBUG: Calculating damage - Vehicle vel: (%.1f, %.1f), Ragdoll vel: (%.1f, %.1f)", 
-        vx, vy, rvx, rvy))
+    if self.debugMode then
+        print(string.format("🔍 DEBUG: Calculating damage - Vehicle vel: (%.1f, %.1f), Ragdoll vel: (%.1f, %.1f), Impulse: %.1f", 
+            vx, vy, rvx, rvy, normalImpulse))
+    end
     
     local damageResult = self.damageCalculator:calculateCollisionDamage(
         self.vehicle, ragdoll, collisionData)
     
-    print(string.format("🔍 DEBUG: Damage calculated: %.1f", damageResult and damageResult.damage or 0))
+    if self.debugMode then
+        print(string.format("🔍 DEBUG: Damage calculated: %.1f", damageResult and damageResult.damage or 0))
+    end
     
     if damageResult and damageResult.damage > 0 then
         -- Apply damage to ragdoll
@@ -558,10 +679,31 @@ function GameManager:checkRunEnd()
         return
     end
     
+    -- Don't end run immediately - give it time to play out
+    if self.runTimer < self.minRunTime then
+        return
+    end
+    
     local vx, vy = self.vehicle:getVelocity()
     local speed = math.sqrt(vx * vx + vy * vy)
     
-    if speed < 10 and self.vehicle.onGround then
+    -- End run when vehicle has stopped for a bit
+    if speed < 5 and self.vehicle.onGround then
+        if not self.stoppedTime then
+            self.stoppedTime = 0
+        end
+        self.stoppedTime = self.stoppedTime + love.timer.getDelta()
+        
+        if self.stoppedTime > 1.5 then  -- Stopped for 1.5 seconds
+            self.stateMachine:setState(self.stateMachine.STATES.RESULTS)
+            self.stoppedTime = nil
+        end
+    else
+        self.stoppedTime = nil
+    end
+    
+    -- Auto-end after 30 seconds to prevent infinite runs
+    if self.runTimer > 30 then
         self.stateMachine:setState(self.stateMachine.STATES.RESULTS)
     end
 end
@@ -605,6 +747,11 @@ function GameManager:calculateResults()
         self.achievementNotification:notify(achievement)
     end
     
+    -- Save once after all achievements processed (batch save optimization)
+    if #newAchievements > 0 then
+        self.saveManager:save()
+    end
+    
     print(string.format("\nRun Complete! Score: %d, Earned: %d subscribers", 
         stats.score, results.subscribers))
     
@@ -619,6 +766,11 @@ function GameManager:update(dt)
     
     -- Week 5: Update achievement notifications
     self.achievementNotification:update(dt)
+    
+    -- Update automated tests if running
+    if self.testRunner and self.testMode then
+        self.testRunner:update(dt)
+    end
 end
 
 function GameManager:draw()
@@ -630,6 +782,11 @@ function GameManager:draw()
     
     -- Week 5: Draw achievement notifications (always on top)
     self.achievementNotification:draw()
+    
+    -- Draw test overlay if testing
+    if self.testRunner and self.testMode then
+        self.testRunner:draw()
+    end
 end
 
 function GameManager:drawGameWorld()
@@ -713,6 +870,20 @@ function GameManager:keypressed(key)
         self.debugRenderer:toggle()
     end
     
+    -- Handle test shortcuts
+    if key == "f2" then
+        self:initializeTestRunner()
+        self.testRunner:quickPositionCheck()
+    end
+    
+    if key == "f3" then
+        self:runAutomatedTest()
+    end
+    
+    if key == "f4" then
+        self:runFullTestSuite()
+    end
+    
     -- Pass to state machine
     self.stateMachine:keypressed(key)
 end
@@ -728,6 +899,49 @@ end
 
 function GameManager:mousepressed(x, y, button)
     self.stateMachine:mousepressed(x, y, button)
+end
+
+function GameManager:initializeTestRunner()
+    --[[
+        Initialize test runner (lazy initialization)
+    ]]
+    
+    if not self.testRunner then
+        local TestRunner = require('tests.test-runner')
+        self.testRunner = TestRunner:new(self)
+        print("✅ Test runner initialized")
+    end
+end
+
+function GameManager:runAutomatedTest()
+    --[[
+        Run a single automated position test on current setup
+        Press F3 to run this during gameplay
+    ]]
+    
+    self:initializeTestRunner()
+    self.testMode = true
+    
+    print("\n🧪 Starting Automated Position Test...")
+    print("Test will monitor vehicle for 10 seconds")
+    print("Press F3 again to run another test\n")
+    
+    self.testRunner:runTest("vehiclePosition", "Manual Position Test")
+end
+
+function GameManager:runFullTestSuite()
+    --[[
+        Run complete automated test suite
+        Press F4 to run this
+    ]]
+    
+    self:initializeTestRunner()
+    self.testMode = true
+    
+    print("\n🧪 Starting FULL Automated Test Suite...")
+    print("This will run multiple tests in sequence\n")
+    
+    self.testRunner:runAllTests()
 end
 
 return GameManager

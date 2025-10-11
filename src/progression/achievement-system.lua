@@ -369,8 +369,7 @@ function AchievementSystem:unlock(achievementId)
             self:unlockSteamAchievement(achievementId)
         end
         
-        -- Auto-save
-        self.saveManager:save()
+        -- Note: Save is now handled by caller to batch multiple achievements
     end
 end
 
